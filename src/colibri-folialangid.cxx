@@ -2,7 +2,7 @@
 #include <string>
 #include <map>
 #include <vector>
-#include <pair>
+#include <utility>
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
@@ -23,13 +23,35 @@ using namespace	folia;
 
 const string ISO_SET = "http://raw.github.com/proycon/folia/master/setdefinitions/iso639_3.foliaset";
 
+typedef PatternModel<uint32_t> UnindexedPatternModel;
+
+folia::processor *add_provenance( folia::Document& doc,
+				  const string& label,
+				  const string& command ) {
+  folia::processor *proc = doc.get_processor( label );
+  if ( proc ){
+    throw logic_error( "add_provenance() failed, label: '" + label
+		       + "' already exists." );
+  }
+  folia::KWargs args;
+  args["name"] = label;
+  args["generate_id"] = "auto()";
+  args["version"] = PACKAGE_VERSION;
+  args["command"] = command;
+  args["begindatetime"] = "now()";
+  args["generator"] = "yes";
+  proc = doc.add_processor( args );
+  proc->get_system_defaults();
+  return proc;
+}
+
 class Model {
    public:
     string lang;
-    PatternModel * model;
+    UnindexedPatternModel * model;
     ClassDecoder * decoder;
 
-    Model(const string & lang, PatternModel * model, ClassDecoder * decoder) {
+    Model(const string & lang, UnindexedPatternModel * model, ClassDecoder * decoder) {
         this->lang = lang;
         this->model = model;
         this->decoder = decoder;
@@ -74,8 +96,8 @@ void setlang( FoliaElement* e, const string& langcode ){
 
 void addLang( const TextContent *t, const vector<std::pair<string,float>>& results, bool doAll ) {
     //assume results is sorted!
-    for ( const auto& l : results ){
-        setlang( t->parent(), val );
+    for ( const auto& result : results ){
+        setlang( t->parent(), result.first );
         if (!doAll) {
             break;
         }
@@ -106,14 +128,14 @@ vector<FoliaElement*> gather_nodes( Document *doc, const string& docName, const 
   return result;
 }
 
-void processFile( const Vector<Models>& models,
+void processFile( vector<Model>& models,
 		 const string& outDir, const string& docName,
 		 const string& default_lang,
 		 set<string> tags,
 		 bool doAll,
 		 const string& cls,
 		 const string& command,
-		 bool lowercase)
+		 bool lowercase) {
 
     cout << "process " << docName << endl;
     Document *doc = 0;
@@ -164,19 +186,15 @@ void processFile( const Vector<Models>& models,
        if ( t ){
          string text = t->str();
          text = TiCC::trim( text );
-         if ( text.empty() ){
-             if ( verbose ) cerr << "WARNING: no textcontent " << id << endl;
-         } else {
+         if ( !text.empty() ){
              if (lowercase) {
                  TiCC::to_lower(text);
              }
-             for (const auto& model: models) {
-                 vector<std::pair<string,float>> = model.classify(text)
-                 addLang( t, lv, doAll );
+             for (auto& model: models) {
+                 vector<std::pair<string,float>> results = model.classify(text);
+                 addLang( t, results, doAll );
              }
          }
-       } else if ( verbose ) {
-           cerr << "WARNING: no textcontent " << id << endl;
        }
     }
     doc->save(outName);
@@ -193,6 +211,7 @@ int main( int argc, const char *argv[] ) {
         exit( EXIT_FAILURE );
     }
 
+    const string progname = opts.prog_name();
     string inputclass = "current";
     string outDir;
 
@@ -204,7 +223,7 @@ int main( int argc, const char *argv[] ) {
         cerr << PACKAGE_STRING << endl;
         exit(EXIT_SUCCESS);
     }
-    string command = "colibri-folialangid " + opts.toString();
+    string command = progname + " " + opts.toString();
 
 
     const bool lowercase = opts.extract("lowercase");
@@ -220,17 +239,9 @@ int main( int argc, const char *argv[] ) {
     opts.extract( "tags", tagsstring );
     if ( !tagsstring.empty() ){
         vector<string> parts = TiCC::split_at( tagsstring, "," );
-        for( const auto& t : parts {
+        for (const auto& t : parts) {
           tags.insert( t );
         }
-    }
-    if ( doStrings ){
-        if ( !tags.empty() ){
-          cerr << "--tags and -s conflict." << endl;
-          exit(EXIT_FAILURE);
-        } else {
-           tags.insert( "str" );
-       }
     }
     if ( tags.empty() ){
         tags.insert( "p" );
