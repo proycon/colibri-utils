@@ -28,44 +28,58 @@ typedef PatternModel<uint32_t> UnindexedPatternModel;
 folia::processor *add_provenance( folia::Document& doc,
 				  const string& label,
 				  const string& command ) {
-  folia::processor *proc = doc.get_processor( label );
-  if ( proc ){
-    throw logic_error( "add_provenance() failed, label: '" + label
-		       + "' already exists." );
-  }
-  folia::KWargs args;
-  args["name"] = label;
-  args["generate_id"] = "auto()";
-  args["version"] = PACKAGE_VERSION;
-  args["command"] = command;
-  args["begindatetime"] = "now()";
-  args["generator"] = "yes";
-  proc = doc.add_processor( args );
-  proc->get_system_defaults();
-  return proc;
+    folia::processor *proc = doc.get_processor( label );
+    if ( proc ){
+        throw logic_error( "add_provenance() failed, label: '" + label + "' already exists." );
+    }
+    folia::KWargs args;
+    args["name"] = label;
+    args["generate_id"] = "auto()";
+    args["version"] = PACKAGE_VERSION;
+    args["command"] = command;
+    args["begindatetime"] = "now()";
+    args["generator"] = "yes";
+    proc = doc.add_processor( args );
+    proc->get_system_defaults();
+    return proc;
 }
 
 class Model {
    public:
     string lang;
-    UnindexedPatternModel * model;
-    ClassDecoder * decoder;
+    ClassEncoder * encoder;
 
-    Model(const string & lang, UnindexedPatternModel * model, ClassDecoder * decoder) {
+    Model(const string & lang,  ClassEncoder * encoder) {
         this->lang = lang;
-        this->model = model;
-        this->decoder = decoder;
+        this->encoder = encoder;
     }
 
-    vector<pair<string,float>> classify(const string & text) {
+    vector<pair<string,double>> classify(const string & text) {
         //we are going to have to do some very crude tokenisation here
         //and then pass control over to the other classify()
         //TODO
     }
 
-    vector<pair<string,float>> classify(const vector<string> & text) {
-        vector<pair<string,float>> results;
-        //this is where the magic happens
+    vector<pair<string,double>> classify(const vector<string> & tokens) {
+        vector<pair<string,double>> results;
+
+        const double max = encoder->gethighestclass();
+
+        const double oov_score = 1.0;
+
+        double score = 0;
+
+        for (auto& token: tokens) {
+            const auto& found = encoder->find(token);
+            if (found == encoder->end()) {
+                score += oov_score;
+            } else {
+                score += ((double) found->second) / max;
+            }
+        }
+
+        score = 1.0 - score;
+
         //TODO: sort result by confidence before returning
         return results;
     }
@@ -79,7 +93,7 @@ void usage( const string& name ){
     cerr << "--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use the <p> nodes)." << endl;
     cerr << "--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--lowercase\t Lowercase all text (make sure the models are trained like this too if you use this!)" << endl;
-    cerr << "\t--models\t This list consists of languagecode,modelfile,classfile tuples, the tuples are semicolon separated" << endl;
+    cerr << "\t--models\t This list consists of languagecode:classfile tuples, the tuples are comma separated" << endl;
     cerr << "\t--class\t class (default: current)" << endl;
     cerr << "\t-h or --help\t this message " << endl;
     cerr << "\t-V or --version\t show version " << endl;
@@ -94,7 +108,7 @@ void setlang( FoliaElement* e, const string& langcode ){
     e->replace( node );
 }
 
-void addLang( const TextContent *t, const vector<std::pair<string,float>>& results, bool doAll ) {
+void addLang( const TextContent *t, const vector<std::pair<string,double>>& results, bool doAll ) {
     //assume results is sorted!
     for ( const auto& result : results ){
         setlang( t->parent(), result.first );
@@ -191,7 +205,7 @@ void processFile( vector<Model>& models,
                  TiCC::to_lower(text);
              }
              for (auto& model: models) {
-                 vector<std::pair<string,float>> results = model.classify(text);
+                 vector<std::pair<string,double>> results = model.classify(text);
                  addLang( t, results, doAll );
              }
          }
@@ -248,8 +262,18 @@ int main( int argc, const char *argv[] ) {
     }
 
     string models_list;
+    vector<Model> models;
     opts.extract( "models", models_list );
-    //TODO: parse
+    vector<string> parts = TiCC::split_at( tagsstring, "," );
+    for (const auto& part : parts) {
+      vector<string> fields = TiCC::split_at( part, ":" );
+      if (fields.size() != 2) {
+            cerr << "--models expects a comma separated list of lang:classfile, got: " << part << endl;
+            exit( EXIT_FAILURE );
+      }
+      ClassEncoder * encoder = new ClassEncoder(fields[1]);
+      models.push_back(Model(fields[0], encoder));
+    }
 
     vector<string> fileNames = opts.getMassOpts();
     if ( fileNames.empty() ){
