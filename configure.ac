@@ -51,7 +51,7 @@ else
     export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$PKG_CONFIG_PATH"
 fi
 
-AC_OSX_PKG( [icu4c] )
+#AC_OSX_PKG( [icu4c] )
 
 #PKG_CHECK_MODULES( [TEXTCAT],
 #  [libexttextcat],
@@ -99,7 +99,7 @@ PKG_CHECK_MODULES([folia], [folia >= 2.1] )
 CXXFLAGS="$folia_CFLAGS $CXXFLAGS"
 LIBS="$folia_LIBS $LIBS"
 
-PKG_CHECK_MODULES([colibri-core], [colibri-core >= 2.4] )
+PKG_CHECK_MODULES([colibri_core], [colibri-core >= 2.4] )
 CXXFLAGS="$colibri_core_CFLAGS $CXXFLAGS"
 LIBS="$colibri_core_LIBS $LIBS"
 
@@ -107,6 +107,4 @@ AC_OUTPUT([
   Makefile
   m4/Makefile
   src/Makefile
-  #include/Makefile
-  #include/colibri-utils/Makefile
 ])
