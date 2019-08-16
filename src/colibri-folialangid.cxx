@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <string>
 #include <map>
+#include <algorithm>
 #include <vector>
 #include <utility>
 #include <iostream>
@@ -22,6 +23,9 @@ using namespace	icu;
 using namespace	folia;
 
 const string ISO_SET = "http://raw.github.com/proycon/folia/master/setdefinitions/iso639_3.foliaset";
+
+const char PUNCT [] = { ' ', '.', ',', ':',';','@','/','\\', '\'', '"', '(',')','[',']','{','}' };
+const int punctcount = 16;
 
 typedef PatternModel<uint32_t> UnindexedPatternModel;
 
@@ -57,7 +61,31 @@ class Model {
     vector<pair<string,double>> classify(const string & text) {
         //we are going to have to do some very crude tokenisation here
         //and then pass control over to the other classify()
-        //TODO
+        bool ispunct;
+        string token = "";
+        vector<string> tokens;
+        for (size_t i = 0; i < text.size(); i++) {
+            ispunct = false;
+            for (int j = 0; j < punctcount; j++) {
+                if (text[i] == PUNCT[j]) {
+                    ispunct = true;
+                    break;
+                }
+            }
+            if (ispunct) {
+                if (!token.empty()) {
+                    tokens.push_back(token);
+                    token = "";
+                }
+            } else {
+                token += text[i];
+            }
+        }
+        if (!token.empty()) {
+            tokens.push_back(token);
+            token = "";
+        }
+        return classify(tokens);
     }
 
     vector<pair<string,double>> classify(const vector<string> & tokens) {
@@ -67,7 +95,7 @@ class Model {
 
         const double oov_score = 1.0;
 
-        double score = 0;
+        double score = 0; //score to be MINIMISED
 
         for (auto& token: tokens) {
             const auto& found = encoder->find(token);
@@ -78,9 +106,13 @@ class Model {
             }
         }
 
-        score = 1.0 - score;
+        //normalize length
+        score = score / tokens.size();
 
-        //TODO: sort result by confidence before returning
+        //sort result by score before returning (look mom, I used a lambda expression!)
+        std::sort(results.begin(), results.end(), [](const std::pair<string,int> &x, const std::pair<string,int> &y) {
+            return x.second < y.second;
+        });
         return results;
     }
 };
@@ -99,11 +131,12 @@ void usage( const string& name ){
     cerr << "\t-V or --version\t show version " << endl;
 }
 
-void setlang( FoliaElement* e, const string& langcode ){
+void setlang( FoliaElement* e, const string& langcode, const double score ){
     // append a LangAnnotation child of class 'lan'
     KWargs args;
     args["class"] = langcode;
     args["set"] = ISO_SET;
+    args["confidence"] = 1.0 - score;
     LangAnnotation *node = new LangAnnotation( args, e->doc() );
     e->replace( node );
 }
@@ -111,7 +144,7 @@ void setlang( FoliaElement* e, const string& langcode ){
 void addLang( const TextContent *t, const vector<std::pair<string,double>>& results, bool doAll ) {
     //assume results is sorted!
     for ( const auto& result : results ){
-        setlang( t->parent(), result.first );
+        setlang( t->parent(), result.first, result.second );
         if (!doAll) {
             break;
         }
