@@ -115,7 +115,7 @@ void usage( const string& name ){
     cerr << "\t--lang=<code>\t use 'code' for unindentified text." << endl;
     cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use the <p> nodes)." << endl;
     cerr << "\t--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
-    cerr << "\t--lowercase\t Lowercase all text (make sure the models are trained like this too if you use this!)" << endl;
+    cerr << "\t--casesensitive\t Case sensitive (make sure the models are trained like this too if you use this!)" << endl;
     cerr << "\t--data\t Points to the data directory containing the language models" << endl;
     cerr << "\t--class\t input text class (default: current)" << endl;
     cerr << "\t-h or --help\t this message " << endl;
@@ -313,7 +313,7 @@ int main( int argc, const char *argv[] ) {
     string command = progname + " " + opts.toString();
 
 
-    const bool lowercase = opts.extract("lowercase");
+    const bool lowercase = !opts.extract("casesensitive");
     const bool doAll = opts.extract( "all" );
     const bool debug = opts.extract('d');
 
