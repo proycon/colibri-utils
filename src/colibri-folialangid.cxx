@@ -112,9 +112,9 @@ void usage( const string& name ){
     cerr << "Usage: " << name << " [options] file" << endl;
     cerr << "Description: Language identification on a FoLiA document against various colibri models" << endl;
     cerr << "Options:" << endl;
-    cerr << "--lang=<code>\t use 'code' for unindentified text." << endl;
-    cerr << "--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use the <p> nodes)." << endl;
-    cerr << "--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
+    cerr << "\t--lang=<code>\t use 'code' for unindentified text." << endl;
+    cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use the <p> nodes)." << endl;
+    cerr << "\t--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--lowercase\t Lowercase all text (make sure the models are trained like this too if you use this!)" << endl;
     cerr << "\t--data\t Points to the data directory containing the language models" << endl;
     cerr << "\t--class\t input text class (default: current)" << endl;
@@ -289,7 +289,7 @@ void processTextFile( vector<Model>& models,
 }
 
 int main( int argc, const char *argv[] ) {
-    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,tags:,class:,lowercase" );
+    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,tags:,class:,lowercase,data:" );
     try {
         opts.init( argc, argv );
     } catch( TiCC::OptionError& e ){
@@ -315,7 +315,7 @@ int main( int argc, const char *argv[] ) {
 
     const bool lowercase = opts.extract("lowercase");
     const bool doAll = opts.extract( "all" );
-    const bool debug = opts.extract( "debug" );
+    const bool debug = opts.extract('d');
 
     string lang;
     opts.extract( "lang", lang );
@@ -345,13 +345,22 @@ int main( int argc, const char *argv[] ) {
         cerr << "no data files found in '" << datadir << "'" << endl;
         exit( EXIT_FAILURE );
     }
+    if (modelfiles.empty()) {
+        cerr << "no data files found in '" << datadir << "'" << endl;
+        exit( EXIT_FAILURE );
+    }
 
 
     vector<string> parts = TiCC::split_at( tagsstring, "," );
     for (const auto& modelfile : modelfiles) {
       vector<string> fields = TiCC::split_at( modelfile, "." );
-      const string langcode = fields[0];
-      const string classfile = fields[0] + "." + fields[1] + ".colibri.cls";
+      string langcode = fields[0];
+      size_t found = langcode.find_last_of("/");
+      if (found != string::npos) {
+          //strip path
+          langcode = langcode.substr(found+1);
+      }
+      const string classfile = fields[0] + ".colibri.cls";
       ClassEncoder * encoder = new ClassEncoder(classfile);
       UnindexedPatternModel * patternmodel = new UnindexedPatternModel(modelfile, PatternModelOptions());
       models.push_back(Model(langcode, encoder, patternmodel));
