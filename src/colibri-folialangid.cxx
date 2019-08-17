@@ -289,7 +289,7 @@ void processTextFile( vector<Model>& models,
 }
 
 int main( int argc, const char *argv[] ) {
-    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,tags:,class:,lowercase,data:" );
+    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,tags:,class:,casesensitive,data:" );
     try {
         opts.init( argc, argv );
     } catch( TiCC::OptionError& e ){
