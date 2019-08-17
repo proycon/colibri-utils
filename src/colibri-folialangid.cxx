@@ -118,7 +118,7 @@ void usage( const string& name ){
     cerr << "--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--lowercase\t Lowercase all text (make sure the models are trained like this too if you use this!)" << endl;
     cerr << "\t--models\t This list consists of languagecode:classfile tuples, the tuples are comma separated" << endl;
-    cerr << "\t--class\t class (default: current)" << endl;
+    cerr << "\t--class\t input text class (default: current)" << endl;
     cerr << "\t-h or --help\t this message " << endl;
     cerr << "\t-V or --version\t show version " << endl;
 }
