@@ -268,23 +268,28 @@ void processTextFile( vector<Model>& models,
     ifstream f(docName);
     while(std::getline(f, line)) {
          line = TiCC::trim( line );
-         if (lowercase) {
-             TiCC::to_lower(line);
-         }
-         const vector<string> tokens = tokenise(line);
-         vector<std::pair<string,double>> results;
-         for (auto& model: models) {
-              double score = model.test(tokens);
-              results.push_back(std::pair<string,double>(model.lang, score));
-         }
-         sort_results(results);
-         cout << results[0].first << "\t" << results[0].second << "\t" << line << endl;
-         if (debug) {
-             for (int i = 0; i < results.size(); i++) {
-                 cout << results[i].first << "\t" << results[i].second << "\t";
-             }
+         if (line.empty()) {
              cout << endl;
-         }
+         } else {
+             string orig_line = line;
+             if (lowercase) {
+                 TiCC::to_lower(line);
+             }
+             const vector<string> tokens = tokenise(line);
+             vector<std::pair<string,double>> results;
+             for (auto& model: models) {
+                  double score = model.test(tokens);
+                  results.push_back(std::pair<string,double>(model.lang, score));
+             }
+             sort_results(results);
+             cout << results[0].first << "\t" << results[0].second << "\t" << orig_line << endl;
+             if (debug) {
+                 for (int i = 0; i < results.size(); i++) {
+                     cout << results[i].first << "\t" << results[i].second << "\t";
+                 }
+                 cout << endl;
+             }
+        }
     }
 }
 
