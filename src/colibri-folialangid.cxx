@@ -48,6 +48,35 @@ folia::processor *add_provenance( folia::Document& doc,
     return proc;
 }
 
+vector<string> tokenise(const string & text) {
+    //we are going to have to do some very crude tokenisation here
+    bool ispunct;
+    string token = "";
+    vector<string> tokens;
+    for (size_t i = 0; i < text.size(); i++) {
+        ispunct = false;
+        for (int j = 0; j < punctcount; j++) {
+            if (text[i] == PUNCT[j]) {
+                ispunct = true;
+                break;
+            }
+        }
+        if (ispunct) {
+            if (!token.empty()) {
+                tokens.push_back(token);
+                token = "";
+            }
+        } else {
+            token += text[i];
+        }
+    }
+    if (!token.empty()) {
+        tokens.push_back(token);
+        token = "";
+    }
+    return tokens;
+}
+
 class Model {
    public:
     string lang;
@@ -58,39 +87,7 @@ class Model {
         this->encoder = encoder;
     }
 
-    vector<pair<string,double>> classify(const string & text) {
-        //we are going to have to do some very crude tokenisation here
-        //and then pass control over to the other classify()
-        bool ispunct;
-        string token = "";
-        vector<string> tokens;
-        for (size_t i = 0; i < text.size(); i++) {
-            ispunct = false;
-            for (int j = 0; j < punctcount; j++) {
-                if (text[i] == PUNCT[j]) {
-                    ispunct = true;
-                    break;
-                }
-            }
-            if (ispunct) {
-                if (!token.empty()) {
-                    tokens.push_back(token);
-                    token = "";
-                }
-            } else {
-                token += text[i];
-            }
-        }
-        if (!token.empty()) {
-            tokens.push_back(token);
-            token = "";
-        }
-        return classify(tokens);
-    }
-
-    vector<pair<string,double>> classify(const vector<string> & tokens) {
-        vector<pair<string,double>> results;
-
+    double test(const vector<string> & tokens) {
         const double max = encoder->gethighestclass();
 
         const double oov_score = 1.0;
@@ -108,12 +105,7 @@ class Model {
 
         //normalize length
         score = score / tokens.size();
-
-        //sort result by score before returning (look mom, I used a lambda expression!)
-        std::sort(results.begin(), results.end(), [](const std::pair<string,int> &x, const std::pair<string,int> &y) {
-            return x.second < y.second;
-        });
-        return results;
+        return score;
     }
 };
 
@@ -141,7 +133,7 @@ void setlang( FoliaElement* e, const string& langcode, const double score ){
     e->replace( node );
 }
 
-void addLang( const TextContent *t, const vector<std::pair<string,double>>& results, bool doAll ) {
+void add_results( const TextContent *t, const vector<std::pair<string,double>>& results, bool doAll ) {
     //assume results is sorted!
     for ( const auto& result : results ){
         setlang( t->parent(), result.first, result.second );
@@ -149,6 +141,13 @@ void addLang( const TextContent *t, const vector<std::pair<string,double>>& resu
             break;
         }
     }
+}
+
+void sort_results(vector<std::pair<string,double>>& results) {
+     //sort result by score (look mom, I used a lambda expression!)
+     std::sort(results.begin(), results.end(), [](const std::pair<string,int> &x, const std::pair<string,int> &y) {
+        return x.second < y.second;
+     });
 }
 
 vector<FoliaElement*> gather_nodes( Document *doc, const string& docName, const set<string>& tags) {
@@ -168,7 +167,7 @@ vector<FoliaElement*> gather_nodes( Document *doc, const string& docName, const 
     vector<FoliaElement*> v = doc->doc()->select( et, true );
 #pragma omp critical (logging)
     {
-        cout << "document '" << docName << "' has " << v.size() << " " << tag << " nodes " << endl;
+        cerr << "document '" << docName << "' has " << v.size() << " " << tag << " nodes " << endl;
     }
     result.insert( result.end(), v.begin(), v.end() );
   }
@@ -184,7 +183,7 @@ void processFile( vector<Model>& models,
 		 const string& command,
 		 bool lowercase) {
 
-    cout << "process " << docName << endl;
+    cerr << "process " << docName << endl;
     Document *doc = 0;
     try {
         doc = new Document( "file='" + docName + "'" );
@@ -237,15 +236,41 @@ void processFile( vector<Model>& models,
              if (lowercase) {
                  TiCC::to_lower(text);
              }
+             const vector<string> tokens = tokenise(text);
+             vector<std::pair<string,double>> results;
              for (auto& model: models) {
-                 vector<std::pair<string,double>> results = model.classify(text);
-                 addLang( t, results, doAll );
+                 double score = model.test(tokens);
+                 results.push_back(std::pair<string,double>(model.lang, score));
              }
+             sort_results(results);
+             add_results( t, results, doAll );
          }
        }
     }
     doc->save(outName);
     delete doc;
+}
+
+void processTextFile( vector<Model>& models,
+		 const string& docName,
+		 bool lowercase) {
+
+    string line;
+    ifstream f(docName);
+    while(std::getline(f, line)) {
+         line = TiCC::trim( line );
+         if (lowercase) {
+             TiCC::to_lower(line);
+         }
+         const vector<string> tokens = tokenise(line);
+         vector<std::pair<string,double>> results;
+         for (auto& model: models) {
+              double score = model.test(tokens);
+              results.push_back(std::pair<string,double>(model.lang, score));
+         }
+         sort_results(results);
+         cout << results[0].first << "\t" << results[0].second << "\t" << line << endl;
+    }
 }
 
 int main( int argc, const char *argv[] ) {
@@ -315,20 +340,25 @@ int main( int argc, const char *argv[] ) {
     } else if ( fileNames.size() == 1 ){
         string name = fileNames[0];
         try {
-            fileNames = TiCC::searchFilesMatch( name, "*.xml*", false );
+            fileNames = TiCC::searchFilesMatch( name, "*", false );
         } catch ( ... ){
-            cerr << "no matching xml file found: '" << name << "'" << endl;
+            cerr << "no files found: '" << name << "'" << endl;
             exit( EXIT_FAILURE );
         }
     }
 
     size_t toDo = fileNames.size();
     if ( toDo > 1 ){
-        cout << "start processing of " << toDo << " files " << endl;
+        cerr << "start processing of " << toDo << " files " << endl;
     }
     for ( size_t fn=0; fn < toDo; ++fn ){
         string docName = fileNames[fn];
-        processFile( models, outDir, docName, lang, tags, doAll, inputclass, command, lowercase );
+        if (docName.substr(docName.size() - 4) == ".xml") {
+            processFile( models, outDir, docName, lang, tags, doAll, inputclass, command, lowercase );
+        } else {
+            processTextFile( models, docName, lowercase );
+        }
+
     }
     return EXIT_SUCCESS;
 }
