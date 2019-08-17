@@ -146,7 +146,7 @@ void add_results( const TextContent *t, const vector<std::pair<string,double>>& 
 void sort_results(vector<std::pair<string,double>>& results) {
      //sort result by score (look mom, I used a lambda expression!)
      std::sort(results.begin(), results.end(), [](const std::pair<string,int> &x, const std::pair<string,int> &y) {
-        return x.second < y.second;
+        return x.second > y.second;
      });
 }
 
