@@ -96,7 +96,7 @@ class Model {
         double score = 0; //score to be maximised (logprob)
 
         for (auto& token: tokens) {
-            const ::Pattern pattern = encoder->buildpattern(token);
+            const ::Pattern pattern = encoder->buildpattern(token, true);
             if (pattern.unknown() || !patternmodel->has(pattern)) {
                 score += OOV_SCORE; //out of vocabulary score
             } else {
