@@ -116,7 +116,7 @@ void usage( const string& name ){
     cerr << "--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use the <p> nodes)." << endl;
     cerr << "--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--lowercase\t Lowercase all text (make sure the models are trained like this too if you use this!)" << endl;
-    cerr << "\t--models\t This list consists of languagecode:classfile:patternmodel tuples, the tuples are comma separated" << endl;
+    cerr << "\t--data\t Points to the data directory containing the language models" << endl;
     cerr << "\t--class\t input text class (default: current)" << endl;
     cerr << "\t-h or --help\t this message " << endl;
     cerr << "\t-d\tDebug/verbose mode" << endl;
@@ -335,19 +335,26 @@ int main( int argc, const char *argv[] ) {
         tags.insert( "p" );
     }
 
-    string models_list;
+    string datadir = ".";
     vector<Model> models;
-    opts.extract( "models", models_list );
+    opts.extract( "data", datadir );
+    vector<string> modelfiles;
+    try {
+        modelfiles = TiCC::searchFilesMatch( datadir, "*.model", false );
+    } catch ( ... ){
+        cerr << "no data files found in '" << datadir << "'" << endl;
+        exit( EXIT_FAILURE );
+    }
+
+
     vector<string> parts = TiCC::split_at( tagsstring, "," );
-    for (const auto& part : parts) {
-      vector<string> fields = TiCC::split_at( part, ":" );
-      if (fields.size() != 3) {
-            cerr << "--models expects a comma separated list of lang:classfile:modelfile, got: " << part << endl;
-            exit( EXIT_FAILURE );
-      }
-      ClassEncoder * encoder = new ClassEncoder(fields[1]);
-      UnindexedPatternModel * patternmodel = new UnindexedPatternModel(fields[2], PatternModelOptions());
-      models.push_back(Model(fields[0], encoder, patternmodel));
+    for (const auto& modelfile : modelfiles) {
+      vector<string> fields = TiCC::split_at( modelfile, "." );
+      const string langcode = fields[0];
+      const string classfile = fields[0] + "." + fields[1] + ".colibri.cls";
+      ClassEncoder * encoder = new ClassEncoder(classfile);
+      UnindexedPatternModel * patternmodel = new UnindexedPatternModel(modelfile, PatternModelOptions());
+      models.push_back(Model(langcode, encoder, patternmodel));
     }
 
     vector<string> fileNames = opts.getMassOpts();
