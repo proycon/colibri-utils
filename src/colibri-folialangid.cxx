@@ -8,6 +8,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <unordered_set>
+#include <cmath>
 
 #include "ticcutils/FileUtils.h"
 #include "ticcutils/CommandLine.h"
@@ -24,6 +25,7 @@ using namespace	folia;
 
 const string ISO_SET = "http://raw.github.com/proycon/folia/master/setdefinitions/iso639_3.foliaset";
 
+const double OOV_SCORE = -50;
 const char PUNCT [] = { ' ', '.', ',', ':',';','@','/','\\', '\'', '"', '(',')','[',']','{','}' };
 const int punctcount = 16;
 
@@ -80,31 +82,28 @@ vector<string> tokenise(const string & text) {
 class Model {
    public:
     string lang;
+    UnindexedPatternModel * patternmodel;
     ClassEncoder * encoder;
 
-    Model(const string & lang,  ClassEncoder * encoder) {
+    Model(const string & lang,  ClassEncoder * encoder, UnindexedPatternModel * patternmodel) {
         this->lang = lang;
         this->encoder = encoder;
+        this->patternmodel = patternmodel;
     }
 
     double test(const vector<string> & tokens) {
-        const double max = encoder->gethighestclass();
-
-        const double oov_score = 1.0;
-
-        double score = 0; //score to be MINIMISED
+        /* Returns a logprob*/
+        double score = 0; //score to be maximised (logprob)
 
         for (auto& token: tokens) {
-            const auto& found = encoder->find(token);
-            if (found == encoder->end()) {
-                score += oov_score;
+            const ::Pattern pattern = encoder->buildpattern(token);
+            if (pattern.unknown() || !patternmodel->has(pattern)) {
+                score += OOV_SCORE; //out of vocabulary score
             } else {
-                score += ((double) found->second) / max;
+                score += log(patternmodel->frequency(pattern));
             }
         }
 
-        //normalize length
-        score = score / tokens.size();
         return score;
     }
 };
@@ -117,7 +116,7 @@ void usage( const string& name ){
     cerr << "--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use the <p> nodes)." << endl;
     cerr << "--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--lowercase\t Lowercase all text (make sure the models are trained like this too if you use this!)" << endl;
-    cerr << "\t--models\t This list consists of languagecode:classfile tuples, the tuples are comma separated" << endl;
+    cerr << "\t--models\t This list consists of languagecode:classfile:patternmodel tuples, the tuples are comma separated" << endl;
     cerr << "\t--class\t input text class (default: current)" << endl;
     cerr << "\t-h or --help\t this message " << endl;
     cerr << "\t-d\tDebug/verbose mode" << endl;
@@ -236,7 +235,7 @@ void processFile( vector<Model>& models,
          text = TiCC::trim( text );
          if ( !text.empty() ){
              if (lowercase) {
-                 TiCC::to_lower(text);
+                 text = TiCC::utf8_lowercase(text);
              }
              const vector<string> tokens = tokenise(text);
              vector<std::pair<string,double>> results;
@@ -342,12 +341,13 @@ int main( int argc, const char *argv[] ) {
     vector<string> parts = TiCC::split_at( tagsstring, "," );
     for (const auto& part : parts) {
       vector<string> fields = TiCC::split_at( part, ":" );
-      if (fields.size() != 2) {
-            cerr << "--models expects a comma separated list of lang:classfile, got: " << part << endl;
+      if (fields.size() != 3) {
+            cerr << "--models expects a comma separated list of lang:classfile:modelfile, got: " << part << endl;
             exit( EXIT_FAILURE );
       }
       ClassEncoder * encoder = new ClassEncoder(fields[1]);
-      models.push_back(Model(fields[0], encoder));
+      UnindexedPatternModel * patternmodel = new UnindexedPatternModel(fields[2], PatternModelOptions());
+      models.push_back(Model(fields[0], encoder, patternmodel));
     }
 
     vector<string> fileNames = opts.getMassOpts();
