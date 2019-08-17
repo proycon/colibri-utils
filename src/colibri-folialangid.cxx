@@ -120,6 +120,7 @@ void usage( const string& name ){
     cerr << "\t--models\t This list consists of languagecode:classfile tuples, the tuples are comma separated" << endl;
     cerr << "\t--class\t input text class (default: current)" << endl;
     cerr << "\t-h or --help\t this message " << endl;
+    cerr << "\t-d\tDebug/verbose mode" << endl;
     cerr << "\t-V or --version\t show version " << endl;
 }
 
@@ -181,7 +182,8 @@ void processFile( vector<Model>& models,
 		 bool doAll,
 		 const string& cls,
 		 const string& command,
-		 bool lowercase) {
+		 bool lowercase,
+         bool debug) {
 
     cerr << "process " << docName << endl;
     Document *doc = 0;
@@ -244,6 +246,13 @@ void processFile( vector<Model>& models,
              }
              sort_results(results);
              add_results( t, results, doAll );
+             if (debug) {
+                 cerr << results[0].first << "\t" << results[0].second << "\t" << text << endl;
+                 for (int i = 0; i < results.size(); i++) {
+                     cerr << results[i].first << "\t" << results[i].second << "\t";
+                 }
+                 cerr << endl;
+             }
          }
        }
     }
@@ -253,7 +262,8 @@ void processFile( vector<Model>& models,
 
 void processTextFile( vector<Model>& models,
 		 const string& docName,
-		 bool lowercase) {
+		 bool lowercase,
+         bool debug) {
 
     string line;
     ifstream f(docName);
@@ -270,11 +280,17 @@ void processTextFile( vector<Model>& models,
          }
          sort_results(results);
          cout << results[0].first << "\t" << results[0].second << "\t" << line << endl;
+         if (debug) {
+             for (int i = 0; i < results.size(); i++) {
+                 cout << results[i].first << "\t" << results[i].second << "\t";
+             }
+             cout << endl;
+         }
     }
 }
 
 int main( int argc, const char *argv[] ) {
-    TiCC::CL_Options opts( "vVhO:", "models,classfile,class,version,help,lang:,tags:,class:,lowercase" );
+    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,tags:,class:,lowercase" );
     try {
         opts.init( argc, argv );
     } catch( TiCC::OptionError& e ){
@@ -300,6 +316,7 @@ int main( int argc, const char *argv[] ) {
 
     const bool lowercase = opts.extract("lowercase");
     const bool doAll = opts.extract( "all" );
+    const bool debug = opts.extract( "debug" );
 
     string lang;
     opts.extract( "lang", lang );
@@ -354,9 +371,9 @@ int main( int argc, const char *argv[] ) {
     for ( size_t fn=0; fn < toDo; ++fn ){
         string docName = fileNames[fn];
         if (docName.substr(docName.size() - 4) == ".xml") {
-            processFile( models, outDir, docName, lang, tags, doAll, inputclass, command, lowercase );
+            processFile( models, outDir, docName, lang, tags, doAll, inputclass, command, lowercase, debug );
         } else {
-            processTextFile( models, docName, lowercase );
+            processTextFile( models, docName, lowercase, debug );
         }
 
     }
