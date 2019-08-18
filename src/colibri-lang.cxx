@@ -128,7 +128,7 @@ void usage( const string& name ){
     cerr << "Options:" << endl;
     cerr << "\t--lang=<code>\t use 'code' for unindentified text." << endl;
     cerr << "\t--langs=<code>,<code>\t constrain to these languages only." << endl;
-    cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use the <p> nodes)." << endl;
+    cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use all structural nodes that have text)." << endl;
     cerr << "\t--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--casesensitive\t Case sensitive (make sure the models are trained like this too if you use this!)" << endl;
     cerr << "\t--data\t Points to the data directory containing the language models" << endl;
@@ -167,26 +167,29 @@ void sort_results(vector<pair<string,pair<double,double>>>& results) {
 
 vector<FoliaElement*> gather_nodes( Document *doc, const string& docName, const set<string>& tags) {
     vector<FoliaElement*> result;
-    for ( const auto& tag : tags ){
-      ElementType et;
-      try {
-        et = TiCC::stringTo<ElementType>( tag );
-      }
-      catch ( ... ){
-#pragma omp critical (logging)
-        {
-            cerr << "the string '" << tag<< "' doesn't represent a known FoLiA tag" << endl;
-            exit(EXIT_FAILURE);
+    if (tags.empty()) {
+        //no elements predefined, we grab all structural elements that have text
+        vector<FoliaElement*> v = doc->doc()->select( TextContent_t, true );
+        for ( const auto& t: v) {
+            if ((t->parent() != NULL) && isSubClass( t->parent()->element_id(), AbstractStructureElement_t)) {
+                result.push_back(t->parent());
+            }
+        }
+    } else {
+        for ( const auto& tag : tags ){
+            ElementType et;
+            try {
+                et = TiCC::stringTo<ElementType>( tag );
+            } catch ( ... ){
+                cerr << "the string '" << tag<< "' doesn't represent a known FoLiA tag" << endl;
+                exit(EXIT_FAILURE);
+            }
+            vector<FoliaElement*> v = doc->doc()->select( et, true );
+            cerr << "document '" << docName << "' has " << v.size() << " " << tag << " nodes " << endl;
+            result.insert( result.end(), v.begin(), v.end() );
         }
     }
-    vector<FoliaElement*> v = doc->doc()->select( et, true );
-#pragma omp critical (logging)
-    {
-        cerr << "document '" << docName << "' has " << v.size() << " " << tag << " nodes " << endl;
-    }
-    result.insert( result.end(), v.begin(), v.end() );
-  }
-  return result;
+    return result;
 }
 
 void processFile( vector<Model>& models,
@@ -351,9 +354,6 @@ int main( int argc, const char *argv[] ) {
           tags.insert( t );
         }
     }
-    if ( tags.empty() ){
-        tags.insert( "p" );
-    }
 
     set<string> langs;
     string langs_string;
@@ -382,7 +382,6 @@ int main( int argc, const char *argv[] ) {
     }
 
 
-    vector<string> parts = TiCC::split_at( tagsstring, "," );
     for (const auto& modelfile : modelfiles) {
       vector<string> fields = TiCC::split_at( modelfile, "." );
       string langcode = fields[0];
