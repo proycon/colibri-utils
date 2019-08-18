@@ -58,7 +58,7 @@ $ ucto -n -l -Lgeneric corpus.txt corpus.tok.txt
 $ colibri-classencode corpus.tok.txt
 $ colibri-patternmodeller -u -t 5 -l 1 -f corpus.tok.colibri.dat -o corpus.colibri.model
 $ mv corpus.tok.colibri.cls corpus.colibri.cls
-$ sudo cp corpus.colibri.(cls|model) /usr/local/share/colibri-utils/data/
+$ sudo cp corpus.colibri.* /usr/local/share/colibri-utils/data/
 ```
 
 
