@@ -18,7 +18,14 @@ Colibri Utils is included in our [LaMachine distribution](https://proycon.github
 Colibri Utils is written in C++. Building from source is also possible if you
 have the expertise, but requires various dependencies, including
 [ticcutils](https://github.com/LanguageMachines/ticcutils), [libfolia](https://github.com/LanguageMachines/libfolia), and
-[colibri-core](https://github.com/proycon/colibri-core)
+[colibri-core](https://github.com/proycon/colibri-core) which all have to be obtained and compiled separately.
+
+```
+$ bash bootstrap.sh
+$ ./configure
+$ make
+$ sudo make install
+```
 
 Usage
 ---------
@@ -44,7 +51,15 @@ models. Simply train an unindexed patternmodel with [Colibri
 Core](https://proycon.github.io/colibri-core) and put the model file and the
 class file in your data directory. Ensure the data is tokenised and lower-cased
 prior to building a pattern model
-([ucto](https://github.com/LanguageMachines/ucto) can do both of this for you).
+([ucto](https://github.com/LanguageMachines/ucto) can do both of this for you). A full example:
+
+```
+$ ucto -n -l -Lgeneric corpus.txt corpus.tok.txt
+$ colibri-classencode corpus.tok.txt
+$ colibri-patternmodeller -u -t 5 -l 1 -i corpus.tok.colibri.dat -o corpus.colibri.model
+$ mv corpus.tok.colibri.cls corpus.colibri.cls
+$ sudo cp corpus.colibri.(cls|model) /usr/local/share/colibri-utils/data/
+```
 
 
 
