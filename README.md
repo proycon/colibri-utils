@@ -1,7 +1,7 @@
 Colibri Utils
 ===================
 
-This collection of utility currently contains only a single tool:
+This collection of Natural Language Processing utilities currently contains only a single tool:
 
 * **Colibri Lang: Language identification** - Detects in what language parts of a document are. Works on [FoLiA XML](https://proycon.github.io/folia) documents as well as plain text. Currently supports only a limited subset of languages:
     * English, Spanish, Dutch, French, Portuguese, German, Italian, Swedish, Danish (trained on Europarl)
@@ -13,7 +13,7 @@ This collection of utility currently contains only a single tool:
 Installation
 -----------------
 
-This tool is included in our [LaMachine distribution](https://proycon.github.io/LaMachine), which is the easiest and recommended way of obtaining it.
+Colibri Utils is included in our [LaMachine distribution](https://proycon.github.io/LaMachine), which is the easiest and recommended way of obtaining it.
 
 Colibri Utils is written in C++. Building from source is also possible if you
 have the expertise, but requires various dependencies, including
