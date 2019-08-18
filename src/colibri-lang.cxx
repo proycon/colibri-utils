@@ -30,8 +30,7 @@ using namespace	folia;
 const string ISO_SET = "http://raw.github.com/proycon/folia/master/setdefinitions/iso639_3.foliaset";
 
 const double OOV_SCORE = -50;
-const char PUNCT [] = { ' ', '.', ',', ':',';','@','/','\\', '\'', '"', '(',')','[',']','{','}' };
-const int punctcount = 16;
+const set<char> PUNCT = { ' ', '.', ',', ':',';','@','/','\\', '\'', '"', '(',')','[',']','{','}','_','?','!','#','%'};
 
 
 typedef PatternModel<uint32_t> UnindexedPatternModel;
@@ -62,8 +61,8 @@ vector<string> tokenise(const string & text) {
     vector<string> tokens;
     for (size_t i = 0; i < text.size(); i++) {
         ispunct = false;
-        for (int j = 0; j < punctcount; j++) {
-            if (text[i] == PUNCT[j]) {
+        for (const auto& punct: PUNCT) {
+            if (text[i] == punct) {
                 ispunct = true;
                 break;
             }
