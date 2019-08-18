@@ -200,6 +200,28 @@ vector<FoliaElement*> gather_nodes( Document *doc, const string& docName, const 
     return result;
 }
 
+pair<string,double> printstats(const unordered_map<string,size_t> & stats) {
+    std::vector<pair<string,size_t>> v;
+    std::copy(stats.begin(), stats.end(), std::back_inserter<std::vector<pair<string,size_t>>>(v) );
+    std::sort(v.begin(), v.end(), [](const std::pair<string,size_t> &x, const std::pair<string,size_t> &y) {
+            return x.second > y.second;
+    });
+    size_t total = 0;
+    for (const auto& iter: v ) { total += iter.second; }
+    cout << "#DOCUMENT:\t";
+    string mainlang = "";
+    double mainfreq = 0.0;
+    for (const auto& iter: v ) {
+        if (mainlang.empty()) {
+            mainlang = iter.first;
+            mainfreq = iter.second / (double) total;
+        }
+        cout << iter.first << "\t" << iter.second / (double) total<< "\t";
+    }
+    cout << endl;
+    return make_pair(mainlang, mainfreq / (double) total) ;
+}
+
 void processFile( vector<Model>& models,
 		 const string& outDir, const string& docName,
 		 const string& default_lang,
@@ -218,7 +240,7 @@ void processFile( vector<Model>& models,
         cerr << "no document: " << e.what() << endl;
         return;
     }
-    doc->set_metadata( "language", default_lang );
+    //doc->set_metadata( "language", default_lang );
     processor *proc = add_provenance( *doc, "colibri-lang", command );
     if ( !doc->declared(  AnnotationType::LANG, ISO_SET ) ){
         KWargs args;
@@ -247,6 +269,8 @@ void processFile( vector<Model>& models,
        exit( EXIT_FAILURE);
     }
 
+    unordered_map<string,size_t> stats;
+
     vector<FoliaElement*> nodes = gather_nodes( doc, docName, tags );
     for ( const auto& node : nodes ){
        const TextContent *t = 0;
@@ -271,6 +295,7 @@ void processFile( vector<Model>& models,
              }
              sort_results(results);
              add_results( t, results, doAll );
+             stats[results[0].first] += 1;
              if (debug) {
                  cerr << results[0].first << "\t" << results[0].second.first << "\t" << results[0].second.second << text << endl;
                  for (int i = 0; i < results.size(); i++) {
@@ -281,6 +306,10 @@ void processFile( vector<Model>& models,
          }
        }
     }
+    pair<string,double> result  = printstats(stats);
+    if (!result.first.empty() && result.second >= 0.66) {
+        doc->set_metadata("language", result.first);
+    }
     doc->save(outName);
     delete doc;
 }
@@ -290,6 +319,7 @@ void processTextFile( vector<Model>& models,
 		 bool lowercase,
          bool debug) {
 
+    unordered_map<string,size_t> stats;
     string line;
     ifstream f(docName);
     while(std::getline(f, line)) {
@@ -308,6 +338,7 @@ void processTextFile( vector<Model>& models,
                   results.push_back(std::pair<string,pair<double,double>>(model.lang, result));
              }
              sort_results(results);
+             stats[results[0].first] += 1;
              cout << results[0].first << "\t" << results[0].second.first << "\t" << results[0].second.second << "\t" << orig_line << endl;
              if (debug) {
                  for (int i = 0; i < results.size(); i++) {
@@ -317,6 +348,7 @@ void processTextFile( vector<Model>& models,
              }
         }
     }
+    printstats(stats);
 }
 
 int main( int argc, const char *argv[] ) {
