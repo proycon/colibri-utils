@@ -3,7 +3,7 @@ Colibri Utils
 
 This collection of Natural Language Processing utilities currently contains only a single tool:
 
-* **Colibri Lang: Language identification** - Detects in what language parts of a document are. Works on [FoLiA XML](https://proycon.github.io/folia) documents as well as plain text. Currently supports only a limited subset of languages:
+* **Colibri Lang: Language identification** - ``colibri-lang`` - Detects in what language parts of a document are. Works on both [FoLiA XML](https://proycon.github.io/folia) documents as well as plain text. When given FoLiA XML input, the document is enriched with [language annotation](https://folia.readthedocs.io/en/folia2.0/lang_annotation.html) and may be applied to any structural level FoLiA supports (e.g. paragraphs, sentences, etc..). When given plain text input, each input line is classified. This tool currently supports a limited subset of languages, but is easily extendable:
     * English, Spanish, Dutch, French, Portuguese, German, Italian, Swedish, Danish (trained on Europarl)
     * Latin (trained on the Clementine Vulgate bible, and some on a few latin works from Project Gutenberg)
     * Historical Dutch:
