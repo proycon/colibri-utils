@@ -91,9 +91,11 @@ class Model {
         this->patternmodel = patternmodel;
     }
 
-    double test(const vector<string> & tokens) {
+    pair<double,double> test(const vector<string> & tokens) {
         /* Returns a logprob*/
         double score = 0; //score to be maximised (logprob)
+        double confidence = 0;
+        int coverage = 0;
 
         for (auto& token: tokens) {
             const ::Pattern pattern = encoder->buildpattern(token, true);
@@ -101,10 +103,17 @@ class Model {
                 score += OOV_SCORE; //out of vocabulary score
             } else {
                 score += log(patternmodel->frequency(pattern));
+                coverage += 1;
             }
         }
 
-        return score;
+        if (tokens.size() == 0) {
+            score = -999999;
+        } else {
+            confidence = coverage / (double) tokens.size();
+        }
+
+        return make_pair(score, confidence);
     }
 };
 
@@ -123,30 +132,30 @@ void usage( const string& name ){
     cerr << "\t-V or --version\t show version " << endl;
 }
 
-void setlang( FoliaElement* e, const string& langcode, const double score ){
+void setlang( FoliaElement* e, const string& langcode, const double confidence ){
     // append a LangAnnotation child of class 'lan'
     KWargs args;
     args["class"] = langcode;
     args["set"] = ISO_SET;
-    args["confidence"] = 1.0 - score;
+    args["confidence"] = confidence;
     LangAnnotation *node = new LangAnnotation( args, e->doc() );
     e->replace( node );
 }
 
-void add_results( const TextContent *t, const vector<std::pair<string,double>>& results, bool doAll ) {
+void add_results( const TextContent *t, const vector<std::pair<string,pair<double,double>>>& results, bool doAll ) {
     //assume results is sorted!
     for ( const auto& result : results ){
-        setlang( t->parent(), result.first, result.second );
+        setlang( t->parent(), result.first, result.second.second );
         if (!doAll) {
             break;
         }
     }
 }
 
-void sort_results(vector<std::pair<string,double>>& results) {
+void sort_results(vector<pair<string,pair<double,double>>>& results) {
      //sort result by score (look mom, I used a lambda expression!)
-     std::sort(results.begin(), results.end(), [](const std::pair<string,int> &x, const std::pair<string,int> &y) {
-        return x.second > y.second;
+     std::sort(results.begin(), results.end(), [](const std::pair<string,pair<double,double>> &x, const std::pair<string,pair<double,double>> &y) {
+        return x.second.first > y.second.first;
      });
 }
 
@@ -238,17 +247,17 @@ void processFile( vector<Model>& models,
                  text = TiCC::utf8_lowercase(text);
              }
              const vector<string> tokens = tokenise(text);
-             vector<std::pair<string,double>> results;
+             vector<pair<string,pair<double,double>>> results;
              for (auto& model: models) {
-                 double score = model.test(tokens);
-                 results.push_back(std::pair<string,double>(model.lang, score));
+                 pair<double,double> result = model.test(tokens);
+                 results.push_back(std::pair<string,pair<double,double>>(model.lang, result));
              }
              sort_results(results);
              add_results( t, results, doAll );
              if (debug) {
-                 cerr << results[0].first << "\t" << results[0].second << "\t" << text << endl;
+                 cerr << results[0].first << "\t" << results[0].second.first << "\t" << results[0].second.second << text << endl;
                  for (int i = 0; i < results.size(); i++) {
-                     cerr << results[i].first << "\t" << results[i].second << "\t";
+                     cerr << results[i].first << "\t" << results[i].second.first << "\t" << results[i].second.second;
                  }
                  cerr << endl;
              }
@@ -276,16 +285,16 @@ void processTextFile( vector<Model>& models,
                  TiCC::to_lower(line);
              }
              const vector<string> tokens = tokenise(line);
-             vector<std::pair<string,double>> results;
+             vector<std::pair<string,pair<double,double>>> results;
              for (auto& model: models) {
-                  double score = model.test(tokens);
-                  results.push_back(std::pair<string,double>(model.lang, score));
+                  pair<double,double> result = model.test(tokens);
+                  results.push_back(std::pair<string,pair<double,double>>(model.lang, result));
              }
              sort_results(results);
-             cout << results[0].first << "\t" << results[0].second << "\t" << orig_line << endl;
+             cout << results[0].first << "\t" << results[0].second.first << "\t" << results[0].second.second << "\t" << orig_line << endl;
              if (debug) {
                  for (int i = 0; i < results.size(); i++) {
-                     cout << results[i].first << "\t" << results[i].second << "\t";
+                     cout << results[i].first << "\t" << results[i].second.first << "\t" << results[i].second.second << "\t";
                  }
                  cout << endl;
              }
