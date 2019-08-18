@@ -123,18 +123,20 @@ class Model {
 
 void usage( const string& name ){
     cerr << "Usage: " << name << " [options] file" << endl;
-    cerr << "Description: Language identification on a FoLiA document against various colibri models" << endl;
+    cerr << "Description: Language identification on a FoLiA XML document or plain text document, tested against various colibri models" << endl;
     cerr << "Options:" << endl;
-    cerr << "\t--lang=<code>\t use 'code' for unindentified text." << endl;
-    cerr << "\t--langs=<code>,<code>\t constrain to these languages only." << endl;
-    cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use all structural nodes that have text)." << endl;
-    cerr << "\t--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--casesensitive\t Case sensitive (make sure the models are trained like this too if you use this!)" << endl;
     cerr << "\t--data\t Points to the data directory containing the language models" << endl;
-    cerr << "\t--class\t input text class (default: current)" << endl;
+    cerr << "\t--lang=<code>\t fallback language, used for unindentified text." << endl;
+    cerr << "\t--langs=<code>,<code>\t constrain to these languages only." << endl;
     cerr << "\t-h or --help\t this message " << endl;
     cerr << "\t-d\tDebug/verbose mode" << endl;
     cerr << "\t-V or --version\t show version " << endl;
+    cerr << "Options for FoLiA processing:" << endl;
+    cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use all structural nodes that have text)." << endl;
+    cerr << "\t--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
+    cerr << "\t--class\t input text class (default: current)" << endl;
+    cerr << "\t--confidence\t confidence threshold (default: 0.5), if the confidence is lower the fallback language will be used (if set), or no language annotation is made at all otherwise." << endl;
 }
 
 void setlang( FoliaElement* e, const string& langcode, const double confidence, const bool alternative  = false){
@@ -224,7 +226,8 @@ pair<string,double> printstats(const unordered_map<string,size_t> & stats) {
 
 void processFile( vector<Model>& models,
 		 const string& outDir, const string& docName,
-		 const string& default_lang,
+		 const string& fallback_lang,
+		 const double confidence_threshold,
 		 set<string> tags,
 		 bool doAll,
 		 const string& cls,
@@ -240,7 +243,6 @@ void processFile( vector<Model>& models,
         cerr << "no document: " << e.what() << endl;
         return;
     }
-    //doc->set_metadata( "language", default_lang );
     processor *proc = add_provenance( *doc, "colibri-lang", command );
     if ( !doc->declared(  AnnotationType::LANG, ISO_SET ) ){
         KWargs args;
@@ -294,10 +296,16 @@ void processFile( vector<Model>& models,
                  results.push_back(std::pair<string,pair<double,double>>(model.lang, result));
              }
              sort_results(results);
-             add_results( t, results, doAll );
              stats[results[0].first] += 1;
+             const double logprob =  results[0].second.first;
+             const double confidence =  results[0].second.second;
+             if (confidence > confidence_threshold || doAll) {
+                 add_results( t, results, doAll );
+             } else if (!fallback_lang.empty()) {
+                 setlang(t->parent(), fallback_lang, 0.0);
+             }
              if (debug) {
-                 cerr << results[0].first << "\t" << results[0].second.first << "\t" << results[0].second.second << text << endl;
+                 cerr << results[0].first << "\t" << logprob << "\t" << confidence << text << endl;
                  for (int i = 0; i < results.size(); i++) {
                      cerr << results[i].first << "\t" << results[i].second.first << "\t" << results[i].second.second;
                  }
@@ -339,7 +347,9 @@ void processTextFile( vector<Model>& models,
              }
              sort_results(results);
              stats[results[0].first] += 1;
-             cout << results[0].first << "\t" << results[0].second.first << "\t" << results[0].second.second << "\t" << orig_line << endl;
+             const double logprob =  results[0].second.first;
+             const double confidence =  results[0].second.second;
+             cout << results[0].first << "\t" << logprob << "\t" << confidence << "\t" << orig_line << endl;
              if (debug) {
                  for (int i = 0; i < results.size(); i++) {
                      cout << results[i].first << "\t" << results[i].second.first << "\t" << results[i].second.second << "\t";
@@ -352,7 +362,7 @@ void processTextFile( vector<Model>& models,
 }
 
 int main( int argc, const char *argv[] ) {
-    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,langs:,tags:,class:,casesensitive,data:" );
+    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,langs:,tags:,class:,casesensitive,data:,threshold:" );
     try {
         opts.init( argc, argv );
     } catch( TiCC::OptionError& e ){
@@ -380,8 +390,10 @@ int main( int argc, const char *argv[] ) {
     const bool doAll = opts.extract( "all" );
     const bool debug = opts.extract('d');
 
-    string lang;
-    opts.extract( "lang", lang );
+    string fallback = ""; //no fallback by default
+    double confidence_threshold = 0.5;
+    opts.extract( "lang", fallback );
+    opts.extract( "confidence", confidence_threshold );
     opts.extract( "class", inputclass );
     opts.extract( 'O', outDir );
 
@@ -459,7 +471,7 @@ int main( int argc, const char *argv[] ) {
     for ( size_t fn=0; fn < toDo; ++fn ){
         string docName = fileNames[fn];
         if (docName.substr(docName.size() - 4) == ".xml") {
-            processFile( models, outDir, docName, lang, tags, doAll, inputclass, command, lowercase, debug );
+            processFile( models, outDir, docName, fallback, confidence_threshold, tags, doAll, inputclass, command, lowercase, debug );
         } else {
             processTextFile( models, docName, lowercase, debug );
         }
