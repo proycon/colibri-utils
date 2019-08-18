@@ -122,6 +122,7 @@ void usage( const string& name ){
     cerr << "Description: Language identification on a FoLiA document against various colibri models" << endl;
     cerr << "Options:" << endl;
     cerr << "\t--lang=<code>\t use 'code' for unindentified text." << endl;
+    cerr << "\t--langs=<code>,<code>\t constrain to these languages only." << endl;
     cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use the <p> nodes)." << endl;
     cerr << "\t--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--casesensitive\t Case sensitive (make sure the models are trained like this too if you use this!)" << endl;
@@ -303,7 +304,7 @@ void processTextFile( vector<Model>& models,
 }
 
 int main( int argc, const char *argv[] ) {
-    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,tags:,class:,casesensitive,data:" );
+    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,langs:,tags:,class:,casesensitive,data:" );
     try {
         opts.init( argc, argv );
     } catch( TiCC::OptionError& e ){
@@ -349,6 +350,16 @@ int main( int argc, const char *argv[] ) {
         tags.insert( "p" );
     }
 
+    set<string> langs;
+    string langs_string;
+    opts.extract( "langs", langs_string );
+    if ( !tagsstring.empty() ){
+        vector<string> parts = TiCC::split_at( langs_string, "," );
+        for (const auto& langcode : parts) {
+          langs.insert( langcode );
+        }
+    }
+
     string datadir = ".";
     vector<Model> models;
     opts.extract( "data", datadir );
@@ -374,10 +385,12 @@ int main( int argc, const char *argv[] ) {
           //strip path
           langcode = langcode.substr(found+1);
       }
-      const string classfile = fields[0] + ".colibri.cls";
-      ClassEncoder * encoder = new ClassEncoder(classfile);
-      UnindexedPatternModel * patternmodel = new UnindexedPatternModel(modelfile, PatternModelOptions());
-      models.push_back(Model(langcode, encoder, patternmodel));
+      if (langs.empty() || langs.find(langcode) != langs.end()) {
+          const string classfile = fields[0] + ".colibri.cls";
+          ClassEncoder * encoder = new ClassEncoder(classfile);
+          UnindexedPatternModel * patternmodel = new UnindexedPatternModel(modelfile, PatternModelOptions());
+          models.push_back(Model(langcode, encoder, patternmodel));
+      }
     }
 
     vector<string> fileNames = opts.getMassOpts();
