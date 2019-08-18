@@ -19,6 +19,10 @@
 
 #include "colibri-core/patternmodel.h"
 
+#ifndef DATA_DIR
+#define DATA_DIR string(SYSCONF_PATH) + "/colibri-utils/"
+#endif
+
 using namespace	std;
 using namespace	icu;
 using namespace	folia;
@@ -28,6 +32,7 @@ const string ISO_SET = "http://raw.github.com/proycon/folia/master/setdefinition
 const double OOV_SCORE = -50;
 const char PUNCT [] = { ' ', '.', ',', ':',';','@','/','\\', '\'', '"', '(',')','[',']','{','}' };
 const int punctcount = 16;
+
 
 typedef PatternModel<uint32_t> UnindexedPatternModel;
 
@@ -360,7 +365,8 @@ int main( int argc, const char *argv[] ) {
         }
     }
 
-    string datadir = ".";
+    string datadir = DATA_DIR;
+    datadir += "data";
     vector<Model> models;
     opts.extract( "data", datadir );
     vector<string> modelfiles;
