@@ -203,7 +203,7 @@ void processFile( vector<Model>& models,
         return;
     }
     doc->set_metadata( "language", default_lang );
-    processor *proc = add_provenance( *doc, "colibri-folialangid", command );
+    processor *proc = add_provenance( *doc, "colibri-lang", command );
     if ( !doc->declared(  AnnotationType::LANG, ISO_SET ) ){
         KWargs args;
         args["processor"] = proc->id();

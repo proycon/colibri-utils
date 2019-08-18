@@ -1,8 +1,8 @@
 AM_CPPFLAGS = -I ../include/
 AM_CXXFLAGS = -std=c++11 -W -Wall -pedantic -g
 
-bin_PROGRAMS = colibri-folialangid
+bin_PROGRAMS = colibri-lang
 
-colibri_folialangid_SOURCES = colibri-folialangid.cxx
+colibri_lang_SOURCES = colibri-lang.cxx
 
 
