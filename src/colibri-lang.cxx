@@ -138,23 +138,32 @@ void usage( const string& name ){
     cerr << "\t-V or --version\t show version " << endl;
 }
 
-void setlang( FoliaElement* e, const string& langcode, const double confidence ){
+void setlang( FoliaElement* e, const string& langcode, const double confidence, const bool alternative  = false){
     // append a LangAnnotation child of class 'lan'
     KWargs args;
     args["class"] = langcode;
     args["set"] = ISO_SET;
     args["confidence"] = confidence;
     LangAnnotation *node = new LangAnnotation( args, e->doc() );
-    e->replace( node );
+    if (alternative) {
+        KWargs args2;
+        Alternative *altnode = new Alternative( args2, e->doc() );
+        altnode->append(node);
+        e->append( altnode );
+    } else {
+        e->replace( node );
+    }
 }
 
 void add_results( const TextContent *t, const vector<std::pair<string,pair<double,double>>>& results, bool doAll ) {
     //assume results is sorted!
+    bool first = true;
     for ( const auto& result : results ){
-        setlang( t->parent(), result.first, result.second.second );
+        setlang( t->parent(), result.first, result.second.second, !first );
         if (!doAll) {
             break;
         }
+        first = false;
     }
 }
 
