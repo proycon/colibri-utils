@@ -19,6 +19,10 @@
 
 #include "colibri-core/patternmodel.h"
 
+#ifndef DATA_DIR
+#define DATA_DIR string(SYSCONF_PATH) + "/colibri-utils/"
+#endif
+
 using namespace	std;
 using namespace	icu;
 using namespace	folia;
@@ -26,8 +30,8 @@ using namespace	folia;
 const string ISO_SET = "http://raw.github.com/proycon/folia/master/setdefinitions/iso639_3.foliaset";
 
 const double OOV_SCORE = -50;
-const char PUNCT [] = { ' ', '.', ',', ':',';','@','/','\\', '\'', '"', '(',')','[',']','{','}' };
-const int punctcount = 16;
+const set<char> PUNCT = { ' ', '.', ',', ':',';','@','/','\\', '\'', '"', '(',')','[',']','{','}','_','?','!','#','%'};
+
 
 typedef PatternModel<uint32_t> UnindexedPatternModel;
 
@@ -57,8 +61,8 @@ vector<string> tokenise(const string & text) {
     vector<string> tokens;
     for (size_t i = 0; i < text.size(); i++) {
         ispunct = false;
-        for (int j = 0; j < punctcount; j++) {
-            if (text[i] == PUNCT[j]) {
+        for (const auto& punct: PUNCT) {
+            if (text[i] == punct) {
                 ispunct = true;
                 break;
             }
@@ -123,7 +127,7 @@ void usage( const string& name ){
     cerr << "Options:" << endl;
     cerr << "\t--lang=<code>\t use 'code' for unindentified text." << endl;
     cerr << "\t--langs=<code>,<code>\t constrain to these languages only." << endl;
-    cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use the <p> nodes)." << endl;
+    cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use all structural nodes that have text)." << endl;
     cerr << "\t--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--casesensitive\t Case sensitive (make sure the models are trained like this too if you use this!)" << endl;
     cerr << "\t--data\t Points to the data directory containing the language models" << endl;
@@ -133,23 +137,32 @@ void usage( const string& name ){
     cerr << "\t-V or --version\t show version " << endl;
 }
 
-void setlang( FoliaElement* e, const string& langcode, const double confidence ){
+void setlang( FoliaElement* e, const string& langcode, const double confidence, const bool alternative  = false){
     // append a LangAnnotation child of class 'lan'
     KWargs args;
     args["class"] = langcode;
     args["set"] = ISO_SET;
     args["confidence"] = confidence;
     LangAnnotation *node = new LangAnnotation( args, e->doc() );
-    e->replace( node );
+    if (alternative) {
+        KWargs args2;
+        Alternative *altnode = new Alternative( args2, e->doc() );
+        altnode->append(node);
+        e->append( altnode );
+    } else {
+        e->replace( node );
+    }
 }
 
 void add_results( const TextContent *t, const vector<std::pair<string,pair<double,double>>>& results, bool doAll ) {
     //assume results is sorted!
+    bool first = true;
     for ( const auto& result : results ){
-        setlang( t->parent(), result.first, result.second.second );
+        setlang( t->parent(), result.first, result.second.second, !first );
         if (!doAll) {
             break;
         }
+        first = false;
     }
 }
 
@@ -162,26 +175,29 @@ void sort_results(vector<pair<string,pair<double,double>>>& results) {
 
 vector<FoliaElement*> gather_nodes( Document *doc, const string& docName, const set<string>& tags) {
     vector<FoliaElement*> result;
-    for ( const auto& tag : tags ){
-      ElementType et;
-      try {
-        et = TiCC::stringTo<ElementType>( tag );
-      }
-      catch ( ... ){
-#pragma omp critical (logging)
-        {
-            cerr << "the string '" << tag<< "' doesn't represent a known FoLiA tag" << endl;
-            exit(EXIT_FAILURE);
+    if (tags.empty()) {
+        //no elements predefined, we grab all structural elements that have text
+        vector<FoliaElement*> v = doc->doc()->select( TextContent_t, true );
+        for ( const auto& t: v) {
+            if ((t->parent() != NULL) && isSubClass( t->parent()->element_id(), AbstractStructureElement_t)) {
+                result.push_back(t->parent());
+            }
+        }
+    } else {
+        for ( const auto& tag : tags ){
+            ElementType et;
+            try {
+                et = TiCC::stringTo<ElementType>( tag );
+            } catch ( ... ){
+                cerr << "the string '" << tag<< "' doesn't represent a known FoLiA tag" << endl;
+                exit(EXIT_FAILURE);
+            }
+            vector<FoliaElement*> v = doc->doc()->select( et, true );
+            cerr << "document '" << docName << "' has " << v.size() << " " << tag << " nodes " << endl;
+            result.insert( result.end(), v.begin(), v.end() );
         }
     }
-    vector<FoliaElement*> v = doc->doc()->select( et, true );
-#pragma omp critical (logging)
-    {
-        cerr << "document '" << docName << "' has " << v.size() << " " << tag << " nodes " << endl;
-    }
-    result.insert( result.end(), v.begin(), v.end() );
-  }
-  return result;
+    return result;
 }
 
 void processFile( vector<Model>& models,
@@ -203,7 +219,7 @@ void processFile( vector<Model>& models,
         return;
     }
     doc->set_metadata( "language", default_lang );
-    processor *proc = add_provenance( *doc, "colibri-folialangid", command );
+    processor *proc = add_provenance( *doc, "colibri-lang", command );
     if ( !doc->declared(  AnnotationType::LANG, ISO_SET ) ){
         KWargs args;
         args["processor"] = proc->id();
@@ -346,9 +362,6 @@ int main( int argc, const char *argv[] ) {
           tags.insert( t );
         }
     }
-    if ( tags.empty() ){
-        tags.insert( "p" );
-    }
 
     set<string> langs;
     string langs_string;
@@ -360,7 +373,8 @@ int main( int argc, const char *argv[] ) {
         }
     }
 
-    string datadir = ".";
+    string datadir = DATA_DIR;
+    datadir += "data";
     vector<Model> models;
     opts.extract( "data", datadir );
     vector<string> modelfiles;
@@ -376,7 +390,6 @@ int main( int argc, const char *argv[] ) {
     }
 
 
-    vector<string> parts = TiCC::split_at( tagsstring, "," );
     for (const auto& modelfile : modelfiles) {
       vector<string> fields = TiCC::split_at( modelfile, "." );
       string langcode = fields[0];

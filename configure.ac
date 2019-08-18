@@ -103,8 +103,13 @@ PKG_CHECK_MODULES([colibri_core], [colibri-core >= 2.4] )
 CXXFLAGS="$colibri_core_CFLAGS $CXXFLAGS"
 LIBS="$colibri_core_LIBS $LIBS"
 
+#DATA_PRE=`pkg-config --variable=prefix colibri-utils`
+DATA_DIR="$prefix/share/colibri-utils"
+AC_DEFINE_UNQUOTED([DATA_DIR], ["$DATA_DIR/"], [location of data files])
+
 AC_OUTPUT([
   Makefile
   m4/Makefile
   src/Makefile
+  data/Makefile
 ])
