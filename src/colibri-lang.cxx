@@ -469,13 +469,15 @@ int main( int argc, const char *argv[] ) {
     for (const auto& modelfile : modelfiles) {
       size_t delimiter = modelfile.find_last_of("/");
       string filename = modelfile;
+      string dir = ".";
       if (delimiter != string::npos) {
           filename = modelfile.substr(delimiter+1);
+          dir = modelfile.substr(0,delimiter);
       }
       vector<string> fields = TiCC::split_at( filename, "." );
       string langcode = fields[0];
       if (langs.empty() || langs.find(langcode) != langs.end()) {
-          const string classfile = fields[0] + ".colibri.cls";
+          const string classfile = dir + "/" + fields[0] + ".colibri.cls";
           ClassEncoder * encoder = new ClassEncoder(classfile);
           UnindexedPatternModel * patternmodel = new UnindexedPatternModel(modelfile, PatternModelOptions());
           models.push_back(Model(langcode, encoder, patternmodel));
