@@ -467,13 +467,13 @@ int main( int argc, const char *argv[] ) {
 
 
     for (const auto& modelfile : modelfiles) {
-      vector<string> fields = TiCC::split_at( modelfile, "." );
-      string langcode = fields[0];
-      size_t found = langcode.find_last_of("/");
-      if (found != string::npos) {
-          //strip path
-          langcode = langcode.substr(found+1);
+      size_t delimiter = langcode.find_last_of("/");
+      string filename = modelfile;
+      if (delimiter != string::npos) {
+          filename = modelfile.substr(delimiter+1);
       }
+      vector<string> fields = TiCC::split_at( filename, "." );
+      string langcode = fields[0];
       if (langs.empty() || langs.find(langcode) != langs.end()) {
           const string classfile = fields[0] + ".colibri.cls";
           ClassEncoder * encoder = new ClassEncoder(classfile);
