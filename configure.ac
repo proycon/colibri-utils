@@ -32,6 +32,9 @@ LT_INIT
 #checks for libraries.
 
 # Checks for header files.
+AC_CHECK_HEADERS([bzlib.h],
+		[LIBS="$LIBS -lbz2"],
+		[AC_MSG_ERROR([bz2lib not found. Please install libbz2-dev])] )
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
