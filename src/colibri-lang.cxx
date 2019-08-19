@@ -467,7 +467,7 @@ int main( int argc, const char *argv[] ) {
 
 
     for (const auto& modelfile : modelfiles) {
-      size_t delimiter = langcode.find_last_of("/");
+      size_t delimiter = modelfile.find_last_of("/");
       string filename = modelfile;
       if (delimiter != string::npos) {
           filename = modelfile.substr(delimiter+1);
