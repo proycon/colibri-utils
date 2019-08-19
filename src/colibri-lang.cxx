@@ -134,18 +134,33 @@ void usage( const string& name ){
     cerr << "\t-V or --version\t show version " << endl;
     cerr << "Options for FoLiA processing:" << endl;
     cerr << "\t--tags=t1,t2,..\t examine text in all <t1>, <t2> ...  nodes. (default is to use all structural nodes that have text)." << endl;
+    cerr << "\t--subcodes=<code>:<main>\tMap language code <code> as a variant of <main>, will be stored as a FoLiA feature with subset 'variant'. Comma separated list of colon seperated tuples. Example --subcodes=dum:nld,nld-vnn:nld" << endl;
     cerr << "\t--all\t\t assign ALL detected languages to the result. (default is to assign the most probable)." << endl;
     cerr << "\t--class\t input text class (default: current)" << endl;
     cerr << "\t--confidence\t confidence threshold (default: 0.5), if the confidence is lower the fallback language will be used (if set), or no language annotation is made at all otherwise." << endl;
 }
 
-void setlang( FoliaElement* e, const string& langcode, const double confidence, const bool alternative  = false){
+void setlang( FoliaElement* e, const string& langcode, const double confidence, const bool alternative, const unordered_map<string,string>& subcodes){
     // append a LangAnnotation child of class 'lan'
+    bool addfeature = false;
     KWargs args;
-    args["class"] = langcode;
+    const auto found = subcodes.find(langcode);
+    if (found != subcodes.end()) {
+        args["class"] = found->second;
+        addfeature = true;
+    } else {
+        args["class"] = langcode;
+    }
     args["set"] = ISO_SET;
     args["confidence"] = to_string(confidence);
     LangAnnotation *node = new LangAnnotation( args, e->doc() );
+    if (addfeature) {
+        KWargs args2;
+        args2["subset"] = "variant";
+        args2["class"] = langcode;
+        Feature *feat = new Feature( args2, e->doc());
+        node->append( feat);
+    }
     if (alternative) {
         KWargs args2;
         Alternative *altnode = new Alternative( args2, e->doc() );
@@ -156,11 +171,11 @@ void setlang( FoliaElement* e, const string& langcode, const double confidence, 
     }
 }
 
-void add_results( const TextContent *t, const vector<std::pair<string,pair<double,double>>>& results, bool doAll ) {
+void add_results( const TextContent *t, const vector<std::pair<string,pair<double,double>>>& results, bool doAll, const unordered_map<string,string>& subcodes) {
     //assume results is sorted!
     bool first = true;
     for ( const auto& result : results ){
-        setlang( t->parent(), result.first, result.second.second, !first );
+        setlang( t->parent(), result.first, result.second.second, !first, subcodes );
         if (!doAll) {
             break;
         }
@@ -227,6 +242,7 @@ pair<string,double> printstats(const unordered_map<string,size_t> & stats) {
 void processFile( vector<Model>& models,
 		 const string& outDir, const string& docName,
 		 const string& fallback_lang,
+         const unordered_map<string,string>& subcodes,
 		 const double confidence_threshold,
 		 set<string> tags,
 		 bool doAll,
@@ -300,9 +316,9 @@ void processFile( vector<Model>& models,
              const double logprob =  results[0].second.first;
              const double confidence =  results[0].second.second;
              if (confidence > confidence_threshold || doAll) {
-                 add_results( t, results, doAll );
+                 add_results( t, results, doAll, subcodes);
              } else if (!fallback_lang.empty()) {
-                 setlang(t->parent(), fallback_lang, 0.0);
+                 setlang(t->parent(), fallback_lang, 0.0, false, subcodes);
              }
              if (debug) {
                  cerr << results[0].first << "\t" << logprob << "\t" << confidence << text << endl;
@@ -362,7 +378,7 @@ void processTextFile( vector<Model>& models,
 }
 
 int main( int argc, const char *argv[] ) {
-    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,langs:,tags:,class:,casesensitive,data:,threshold:,confidence:" );
+    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,langs:,tags:,class:,casesensitive,data:,threshold:,confidence:,subcodes:" );
     try {
         opts.init( argc, argv );
     } catch( TiCC::OptionError& e ){
@@ -416,6 +432,22 @@ int main( int argc, const char *argv[] ) {
           langs.insert( langcode );
         }
     }
+
+    unordered_map<string,string> subcodes;
+    string subcodes_string;
+    opts.extract( "subcodes", langs_string );
+    if ( !langs_string.empty() ) {
+        vector<string> parts = TiCC::split_at( langs_string, "," );
+        for (const auto& part : parts) {
+          vector<string> parts2 = TiCC::split_at( part, ":" );
+          if (parts2.size() != 2) {
+            cerr << "Invalid tuple in --subcodes: '" << part << "'" << endl;
+            exit( EXIT_FAILURE );
+          }
+          subcodes[parts2[0]] = parts2[1];
+        }
+    }
+
 
     string datadir = DATA_DIR;
     datadir += "data";
@@ -471,7 +503,7 @@ int main( int argc, const char *argv[] ) {
     for ( size_t fn=0; fn < toDo; ++fn ){
         string docName = fileNames[fn];
         if (docName.substr(docName.size() - 4) == ".xml") {
-            processFile( models, outDir, docName, fallback, confidence_threshold, tags, doAll, inputclass, command, lowercase, debug );
+            processFile( models, outDir, docName, fallback, subcodes, confidence_threshold, tags, doAll, inputclass, command, lowercase, debug );
         } else {
             processTextFile( models, docName, lowercase, debug );
         }
