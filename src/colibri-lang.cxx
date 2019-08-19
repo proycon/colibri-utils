@@ -153,21 +153,25 @@ void setlang( FoliaElement* e, const string& langcode, const double confidence, 
     }
     args["set"] = ISO_SET;
     args["confidence"] = to_string(confidence);
-    LangAnnotation *node = new LangAnnotation( args, e->doc() );
-    if (addfeature) {
-        KWargs args2;
-        args2["subset"] = "variant";
-        args2["class"] = langcode;
-        Feature *feat = new Feature( args2, e->doc());
-        node->append( feat);
-    }
-    if (alternative) {
-        KWargs args2;
-        Alternative *altnode = new Alternative( args2, e->doc() );
-        altnode->append(node);
-        e->append( altnode );
-    } else {
-        e->replace( node );
+    try {
+        LangAnnotation *node = new LangAnnotation( args, e->doc() );
+        if (addfeature) {
+            KWargs args2;
+            args2["subset"] = "variant";
+            args2["class"] = langcode;
+            Feature *feat = new Feature( args2, e->doc());
+            node->append( feat);
+        }
+        if (alternative) {
+            KWargs args2;
+            Alternative *altnode = new Alternative( args2, e->doc() );
+            altnode->append(node);
+            e->append( altnode );
+        } else {
+            e->replace( node );
+        }
+    } catch (ValueError e ){
+        cerr << "WARNING: " << e.what() << endl;
     }
 }
 
