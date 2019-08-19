@@ -144,7 +144,7 @@ void setlang( FoliaElement* e, const string& langcode, const double confidence, 
     KWargs args;
     args["class"] = langcode;
     args["set"] = ISO_SET;
-    args["confidence"] = confidence;
+    args["confidence"] = to_string(confidence);
     LangAnnotation *node = new LangAnnotation( args, e->doc() );
     if (alternative) {
         KWargs args2;
