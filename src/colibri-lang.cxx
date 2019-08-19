@@ -362,7 +362,7 @@ void processTextFile( vector<Model>& models,
 }
 
 int main( int argc, const char *argv[] ) {
-    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,langs:,tags:,class:,casesensitive,data:,threshold:" );
+    TiCC::CL_Options opts( "vVhO:d", "models,classfile,class,version,help,lang:,langs:,tags:,class:,casesensitive,data:,threshold:,confidence:" );
     try {
         opts.init( argc, argv );
     } catch( TiCC::OptionError& e ){
