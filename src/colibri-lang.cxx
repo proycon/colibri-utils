@@ -198,7 +198,7 @@ vector<FoliaElement*> gather_nodes( Document *doc, const string& docName, const 
     vector<FoliaElement*> result;
     if (tags.empty()) {
         //no elements predefined, we grab all structural elements that have text
-        vector<FoliaElement*> v = doc->doc()->select( TextContent_t, true );
+        vector<FoliaElement*> v = doc->doc()->select( TextContent_t );
         for ( const auto& t: v) {
             if ((t->parent() != NULL) && isSubClass( t->parent()->element_id(), AbstractStructureElement_t)) {
                 result.push_back(t->parent());
@@ -213,7 +213,7 @@ vector<FoliaElement*> gather_nodes( Document *doc, const string& docName, const 
                 cerr << "the string '" << tag<< "' doesn't represent a known FoLiA tag" << endl;
                 exit(EXIT_FAILURE);
             }
-            vector<FoliaElement*> v = doc->doc()->select( et, true );
+            vector<FoliaElement*> v = doc->doc()->select( et );
             cerr << "document '" << docName << "' has " << v.size() << " " << tag << " nodes " << endl;
             result.insert( result.end(), v.begin(), v.end() );
         }
