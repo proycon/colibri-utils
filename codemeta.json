@@ -1,0 +1,75 @@
+{
+    "@context": [
+        "https://doi.org/10.5063/schema/codemeta-2.0",
+        "http://schema.org"
+    ],
+    "@type": "SoftwareSourceCode",
+    "identifier": "colibriutils",
+    "name": "Colibri Utils",
+    "version": "0.2.1",
+    "description": "Utilities build on top of Colibri Core.",
+    "license": "https://spdx.org/licenses/GPL-3.0",
+	"url": "https://proycon.github.io/colibri-core",
+    "author": [
+		{
+			"@id": "https://orcid.org/0000-0002-1046-0006",
+			"@type": "Person",
+			"givenName": "Maarten",
+			"familyName": "van Gompel",
+			"email": "proycon@anaproy.nl",
+            "affiliation": {
+                "@id": "https://www.ru.nl/cls",
+                "@type": "Organization",
+                "name": "Centre for Language Studies",
+                "url": "https://www.ru.nl/cls",
+                "parentOrganization": {
+                    "@id": "https://www.ru.nl",
+                    "name": "Radboud University",
+                    "@type": "Organization",
+                    "url": "https://www.ru.nl",
+                    "location": {
+                        "@type": "Place",
+                        "name": "Nijmegen"
+                    }
+                }
+            }
+		}
+	],
+	"sourceOrganization": { "@id": "https://www.ru.nl/cls" },
+	"programmingLanguage": [{
+		"@type": "ComputerLanguage",
+		"identifier": "c++",
+		"name": "C++"
+	}
+    ],
+	"operatingSystem": "POSIX",
+	"codeRepository": "https://github.com/proycon/colibri-utils",
+    "softwareRequirements": [
+        {
+			"@type": "SoftwareApplication",
+			"identifier": "colibricore",
+			"name": "Colibri Core"
+		},
+        {
+			"@type": "SoftwareApplication",
+			"identifier": "libfolia",
+			"name": "libfolia"
+		}
+    ],
+	"readme": "https://github.com/proycon/colibri-utils/blob/master/README.md",
+	"issueTracker": "https://github.com/proycon/colibri-utils/issues",
+	"contIntegration": "https://travis-ci.org/proycon/colibri-utils",
+	"releaseNotes": "https://github.com/proycon/colibri-utils/releases",
+	"developmentStatus": "active",
+	"keywords":  [ "nlp", "natural language processing", "ngrams", "skipgrams", "pattern recognition", "language identification" ],
+    "dateCreated": "2019-08-11",
+    "entryPoints": [
+        {
+            "@type": "EntryPoint",
+            "name": "Colibri Lang",
+            "urlTemplate": "file:///colibri-lang",
+            "description": "Language identification: Detects in what language parts of a document are. Works on both FoLiA XML documents as well as plain text. When given FoLiA XML input, the document is enriched with language annotation and may be applied to any structural level FoLiA supports (e.g. paragraphs, sentences, etc..). When given plain text input, each input line is classified. This tool currently supports a limited subset of languages, including two models for historical dutch. It is easily extendable.",
+            "interfaceType": "CLI"
+        }
+    ]
+}
