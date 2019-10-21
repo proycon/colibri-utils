@@ -326,8 +326,8 @@ void processFile( vector<Model>& models,
              }
              if (debug) {
                  cerr << results[0].first << "\t" << logprob << "\t" << confidence << text << endl;
-                 for (int i = 0; i < results.size(); i++) {
-                     cerr << results[i].first << "\t" << results[i].second.first << "\t" << results[i].second.second;
+                 for ( const auto& it : results) {
+		   cerr << it.first << "\t" << it.second.first << "\t" << it.second.second;
                  }
                  cerr << endl;
              }
@@ -371,10 +371,10 @@ void processTextFile( vector<Model>& models,
              const double confidence =  results[0].second.second;
              cout << results[0].first << "\t" << logprob << "\t" << confidence << "\t" << orig_line << endl;
              if (debug) {
-                 for (int i = 0; i < results.size(); i++) {
-                     cout << results[i].first << "\t" << results[i].second.first << "\t" << results[i].second.second << "\t";
-                 }
-                 cout << endl;
+	       for ( const auto& it : results ) {
+		 cout << it.first << "\t" << it.second.first << "\t" << it.second.second << "\t";
+	       }
+	       cout << endl;
              }
         }
     }
