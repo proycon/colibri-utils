@@ -170,7 +170,7 @@ void setlang( FoliaElement* e, const string& langcode, const double confidence, 
         } else {
             e->replace( node );
         }
-    } catch (ValueError e ){
+    } catch (ValueError& e ){
         cerr << "WARNING: " << e.what() << endl;
     }
 }
