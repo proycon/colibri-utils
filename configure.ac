@@ -1,12 +1,12 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.61)
+AC_PREREQ([2.69])
 AC_INIT([colibri-utils],[0.2.1],[proycon@anaproy.nl]) #adapt version number in codemeta.json as well
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([.])
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CXX( [g++ c++] )
@@ -26,7 +26,6 @@ if test "x$ac_cv_prog_cxx_openmp" != "x"; then
 fi
 
 # use libtool
-AC_PROG_LIBTOOL
 LT_INIT
 
 #checks for libraries.
@@ -110,9 +109,10 @@ LIBS="$colibri_core_LIBS $LIBS"
 DATA_DIR="$prefix/share/colibri-utils"
 AC_DEFINE_UNQUOTED([DATA_DIR], ["$DATA_DIR/"], [location of data files])
 
-AC_OUTPUT([
+AC_CONFIG_FILES([
   Makefile
   m4/Makefile
   src/Makefile
   data/Makefile
 ])
+AC_OUTPUT
