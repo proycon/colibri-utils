@@ -200,8 +200,9 @@ vector<FoliaElement*> gather_nodes( Document *doc, const string& docName, const 
         //no elements predefined, we grab all structural elements that have text
         vector<FoliaElement*> v = doc->doc()->select( TextContent_t );
         for ( const auto& t: v) {
-            if ((t->parent() != NULL) && isSubClass( t->parent()->element_id(), AbstractStructureElement_t)) {
-                result.push_back(t->parent());
+            if ((t->parent() != NULL)
+		&& is_subtype( t->parent()->element_id(), AbstractStructureElement_t)) {
+	      result.push_back(t->parent());
             }
         }
     } else {
