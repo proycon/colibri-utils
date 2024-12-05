@@ -97,7 +97,7 @@ LIBS="$ticcutils_LIBS $LIBS"
 #CXXFLAGS="$ucto_CFLAGS $CXXFLAGS"
 #LIBS="$ucto_LIBS $LIBS"
 
-PKG_CHECK_MODULES([folia], [folia >= 2.1] )
+PKG_CHECK_MODULES([folia], [folia >= 2.21] )
 CXXFLAGS="$folia_CFLAGS $CXXFLAGS"
 LIBS="$folia_LIBS $LIBS"
 
